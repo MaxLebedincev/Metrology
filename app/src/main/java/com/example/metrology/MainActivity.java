@@ -20,10 +20,12 @@ import com.github.mikephil.charting.components.YAxis;
 import com.github.mikephil.charting.data.Entry;
 import com.github.mikephil.charting.data.LineData;
 import com.github.mikephil.charting.data.LineDataSet;
-import com.github.mikephil.charting.formatter.DefaultAxisValueFormatter;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 
@@ -62,6 +64,17 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private SensorEventListener sensorEventView;
     private SensorEventListener sensorEventReal;
     private LineChart lineChart;
+    private List<List<Float>> accelerometerVal = new ArrayList<List<Float>>() {{
+        add(new ArrayList<>());
+        add(new ArrayList<>());
+        add(new ArrayList<>());
+        add(new ArrayList<>());
+        add(new ArrayList<>());
+        add(new ArrayList<>());
+        add(new ArrayList<>());
+        add(new ArrayList<>());
+        add(new ArrayList<>());
+    }};
     private List<List<Entry>> entries = new ArrayList<List<Entry>>() {{
         add(new ArrayList<>());
         add(new ArrayList<>());
@@ -181,13 +194,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                             }
 
                             if (counterButton == 0) {
-                                CalculationGraphics(x, y, z, new int[] {0, 1, 2}, 10);
+                                CalculationGraphics(x, y, z, numberGraphicLines[counterButton], 10);
                             }
                             else if (counterButton == 1) {
-                                CalculationGraphics(x, y, z, new int[] {3, 4, 5}, 100);
+                                CalculationGraphics(x, y, z, numberGraphicLines[counterButton], 100);
                             }
                             else if (counterButton == 2) {
-                                CalculationGraphics(x, y, z, new int[] {6, 7, 8}, 1000);
+                                CalculationGraphics(x, y, z, numberGraphicLines[counterButton], 1000);
                             }
 
                             if (counterEntries == 10 && counterButton == 0 && counterPage == 0){
@@ -199,13 +212,14 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                                 (counterEntries == 100 && counterButton == 1) ||
                                 (counterEntries == 1000 && counterButton == 2)
                             ) {
-
                                 CalculationMathVariable();
+
                                 counterButton = (counterButton == 2) ? 0 : ++counterButton;
                                 counterEntries = 0;
                                 sensorManager.unregisterListener(sensorEventReal);
                                 btn.setEnabled(true);
                                 Toast.makeText(getApplicationContext(), "Расчет завершен.", Toast.LENGTH_SHORT).show();
+
                                 draftGraphic();
                                 draftMathVariable();
                             }
@@ -266,15 +280,19 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }
 
         if (counterEntries == 0){
+            accelerometerVal.set(numbersEntryList[0], new ArrayList<>());
+            accelerometerVal.set(numbersEntryList[1], new ArrayList<>());
+            accelerometerVal.set(numbersEntryList[2], new ArrayList<>());
+
             entries.set(numbersEntryList[0], new ArrayList<>());
             entries.set(numbersEntryList[1], new ArrayList<>());
             entries.set(numbersEntryList[2], new ArrayList<>());
         }
 
         if (counterEntries >= 0 && counterEntries <= step) {
-            entries.get(numbersEntryList[0]).add(new Entry(counterEntries, x));
-            entries.get(numbersEntryList[1]).add(new Entry(counterEntries, y));
-            entries.get(numbersEntryList[2]).add(new Entry(counterEntries, z));
+            accelerometerVal.get(numbersEntryList[0]).add(x);
+            accelerometerVal.get(numbersEntryList[1]).add(y);
+            accelerometerVal.get(numbersEntryList[2]).add(z);
         }
 
         counterEntries++;
@@ -287,32 +305,53 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
     private void CalculationMathVariable(){
         for (int i : numberGraphicLines[counterButton]){
+            // mathExpectation
             float mathExpectationTemp = 0;
 
-            for (Entry item : entries.get(i)) {
-                mathExpectationTemp += item.getY();
+            Collections.sort(accelerometerVal.get(i));
+
+            for (Float item : accelerometerVal.get(i)) {
+                mathExpectationTemp += item;
             }
-            mathExpectationTemp /= entries.get(i).size();
+            mathExpectationTemp /= accelerometerVal.get(i).size();
             mathExpectationTemp = (float) Math.round(mathExpectationTemp * 100) / 100;
 
             mathExpectation.set(i, mathExpectationTemp);
 
+            // standardDeviation
             float standardDeviationTemp = 0;
-            for (Entry item : entries.get(i)) {
-                float arg = item.getY();
+            for (Float item : accelerometerVal.get(i)) {
+                float arg = item;
                 arg -= mathExpectation.get(i);
                 arg = (float) Math.pow(arg, 2);
                 standardDeviationTemp += arg;
             }
-            standardDeviationTemp /= entries.get(i).size();
+            standardDeviationTemp /= accelerometerVal.get(i).size();
             standardDeviationTemp = (float) Math.sqrt(standardDeviationTemp);
             standardDeviationTemp = (float) Math.round(standardDeviationTemp * 100) / 100;
 
             standardDeviation.set(i, standardDeviationTemp);
+
+            float newItem = -99999f;
+            float counterKey = 0f;
+            entries.get(i).add(new Entry(-12f, 0f));
+            for (float item : accelerometerVal.get(i)) {
+                if (newItem != item)
+                {
+                    if (counterKey != 0f) {
+                        float y = (float) Math.round((counterKey/accelerometerVal.get(i).size()) * 100) / 100;
+                        entries.get(i).add(new Entry(newItem, y));
+                    }
+                    newItem = item;
+                    counterKey = 1f;
+                } else {
+                    counterKey++;
+                }
+            }
+            entries.get(i).add(new Entry(12f, 0f));
         }
     }
     private void draftGraphic(){
-        int currentNumberGraphic = counterPage / 3;
         int currentColorGraphic = counterPage % 3;
 
         lineChart = findViewById(R.id.chart);
@@ -324,16 +363,16 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         XAxis xAxis = lineChart.getXAxis();
         xAxis.setPosition(XAxis.XAxisPosition.BOTTOM);
-        xAxis.setAxisMinimum(0f);
-        xAxis.setAxisMaximum(counterN[currentNumberGraphic]);
-        xAxis.setLabelCount(10);
+        xAxis.setAxisMinimum(-12f);
+        xAxis.setAxisMaximum(12f);
+        xAxis.setLabelCount(25);
         xAxis.setAxisLineColor(Color.BLACK);
 
         YAxis yAxis = lineChart.getAxisLeft();
         yAxis.setPosition(YAxis.YAxisLabelPosition.OUTSIDE_CHART);
-        yAxis.setAxisMinimum(-12f);
-        yAxis.setAxisMaximum(12f);
-        yAxis.setLabelCount(25);
+        yAxis.setAxisMinimum(0f);
+        yAxis.setAxisMaximum(1f);
+        yAxis.setLabelCount(10);
         yAxis.setAxisLineColor(Color.BLACK);
 
         YAxis yAxisRight = lineChart.getAxisRight();
