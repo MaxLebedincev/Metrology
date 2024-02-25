@@ -20,23 +20,83 @@ import com.github.mikephil.charting.components.YAxis;
 import com.github.mikephil.charting.data.Entry;
 import com.github.mikephil.charting.data.LineData;
 import com.github.mikephil.charting.data.LineDataSet;
-import com.github.mikephil.charting.formatter.IndexAxisValueFormatter;
+import com.github.mikephil.charting.formatter.DefaultAxisValueFormatter;
 
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Date;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
 
+    //region const
+    private static final String[] graphicNames = new String[] {
+            "Ускорение по оси X, при N = 10",
+            "Ускорение по оси Y, при N = 10",
+            "Ускорение по оси Z, при N = 10",
+            "Ускорение по оси X, при N = 100",
+            "Ускорение по оси Y, при N = 100",
+            "Ускорение по оси Z, при N = 100",
+            "Ускорение по оси X, при N = 1000",
+            "Ускорение по оси Y, при N = 1000",
+            "Ускорение по оси Z, при N = 1000",
+
+    };
+    private static final float[] counterN = new float[] {10f, 100f, 1000f};
+    private static final int[] graphicColors = new int[] {Color.RED, Color.BLUE, Color.GREEN};
+
+    private static final int[][] numberGraphicLines = new int[][] {
+        new int[] {0, 1, 2},
+        new int[] {3, 4, 5},
+        new int[] {6, 7, 8}
+    };
+    //endregion
+    //region static value
+    private static int counterEntries = 0;
+    private static int counterButton = 0;
+    private static int counterPage = 0;
+    //endregion
+
     private SensorManager sensorManager;
     private Sensor accleroSensor;
     private SensorEventListener sensorEventView;
     private SensorEventListener sensorEventReal;
     private LineChart lineChart;
-    private List<String> xValues;
+    private List<List<Entry>> entries = new ArrayList<List<Entry>>() {{
+        add(new ArrayList<>());
+        add(new ArrayList<>());
+        add(new ArrayList<>());
+        add(new ArrayList<>());
+        add(new ArrayList<>());
+        add(new ArrayList<>());
+        add(new ArrayList<>());
+        add(new ArrayList<>());
+        add(new ArrayList<>());
+    }};
+
+    private List<Float> mathExpectation = new ArrayList<Float>() {{
+        add(0f);
+        add(0f);
+        add(0f);
+        add(0f);
+        add(0f);
+        add(0f);
+        add(0f);
+        add(0f);
+        add(0f);
+    }};
+
+    private List<Float> standardDeviation = new ArrayList<Float>() {{
+        add(0f);
+        add(0f);
+        add(0f);
+        add(0f);
+        add(0f);
+        add(0f);
+        add(0f);
+        add(0f);
+        add(0f);
+    }};
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -84,59 +144,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             Toast.makeText(this, "Sensor service not detected.", Toast.LENGTH_SHORT).show();
         }
 
-
-
-        // График
-        lineChart = findViewById(R.id.chart);
-
-        Description description = new Description();
-        description.setText("Students Record");
-        description.setPosition(150f,15f);
-        lineChart.setDescription(description);
-        lineChart.getAxisRight().setDrawLabels(false);
-
-        xValues = Arrays.asList("Nadun","Kamal","Jhon","Jerry");
-
-        XAxis xAxis = lineChart.getXAxis();
-        xAxis.setPosition(XAxis.XAxisPosition.BOTTOM);
-        xAxis.setValueFormatter(new IndexAxisValueFormatter(xValues));
-        xAxis.setLabelCount(4);
-        xAxis.setGranularity(1f);
-        xAxis.setAxisMinimum(0f);
-        xAxis.setAxisMaximum(1000f);
-
-        YAxis yAxis = lineChart.getAxisLeft();
-        yAxis.setAxisMinimum(-13f);
-        yAxis.setAxisMaximum(13f);
-        yAxis.setAxisLineWidth(2f);
-        yAxis.setAxisLineColor(Color.BLACK);
-        yAxis.setLabelCount(10);
-
-
-        List<Entry> entries1 = new ArrayList<>();
-        entries1.add(new Entry(0, 60f));
-        entries1.add(new Entry(1, 70f));
-        entries1.add(new Entry(2, 85f));
-        entries1.add(new Entry(3, 95f));
-
-        List<Entry> entries2 = new ArrayList<>();
-        entries2.add(new Entry(0, 50f));
-        entries2.add(new Entry(1, 85f));
-        entries2.add(new Entry(2, 65f));
-        entries2.add(new Entry(3, 80f));
-
-
-        LineDataSet dataSet1 = new LineDataSet(entries1, "Maths");
-        dataSet1.setColor(Color.BLUE);
-
-        LineDataSet dataSet2 = new LineDataSet(entries2, "Science");
-        dataSet2.setColor(Color.RED);
-
-        LineData lineData = new LineData(dataSet1, dataSet2);
-
-        lineChart.setData(lineData);
-
-        lineChart.invalidate();
+        draftGraphic();
     }
 
     @Override
@@ -150,51 +158,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         super.onPause();
         sensorManager.unregisterListener(sensorEventView);
     }
-
-    List<List<Entry>> entries = new ArrayList<List<Entry>>() {{
-        add(new ArrayList<>());
-        add(new ArrayList<>());
-        add(new ArrayList<>());
-        add(new ArrayList<>());
-        add(new ArrayList<>());
-        add(new ArrayList<>());
-        add(new ArrayList<>());
-        add(new ArrayList<>());
-        add(new ArrayList<>());
-    }};
-
-    static int counterEntries = 0;
-    static int counterButton = 0;
-    static int counterPage = 0;
-
-    public void CalculationGrapics(float x, float y, float z, int[] numbersEntryList, int step) {
-
-        if (counterEntries == (step - 1)) {
-            counterEntries = 0;
-            return;
-        }
-
-        if (counterEntries == 0){
-            entries.set(numbersEntryList[0], new ArrayList<>());
-            entries.set(numbersEntryList[1], new ArrayList<>());
-            entries.set(numbersEntryList[2], new ArrayList<>());
-        }
-
-        if (counterEntries >= 0 && counterEntries < step) {
-            entries.get(numbersEntryList[1]).add(new Entry(counterEntries, x));
-            entries.get(numbersEntryList[2]).add(new Entry(counterEntries, y));
-            entries.get(numbersEntryList[2]).add(new Entry(counterEntries, z));
-        }
-
-        counterEntries++;
-
-        try {
-            TimeUnit.MICROSECONDS.sleep(2000 / step);
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
     @Override
     public void onClick(View v) {
         if (v.getId() == R.id.calcul){
@@ -218,29 +181,33 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                             }
 
                             if (counterButton == 0) {
-                                CalculationGrapics(x, y, z, new int[] {0, 1, 2}, 10);
+                                CalculationGraphics(x, y, z, new int[] {0, 1, 2}, 10);
                             }
                             else if (counterButton == 1) {
-                                CalculationGrapics(x, y, z, new int[] {3, 4, 5}, 100);
+                                CalculationGraphics(x, y, z, new int[] {3, 4, 5}, 100);
                             }
                             else if (counterButton == 2) {
-                                CalculationGrapics(x, y, z, new int[] {6, 7, 8}, 1000);
+                                CalculationGraphics(x, y, z, new int[] {6, 7, 8}, 1000);
                             }
 
-                            if (counterEntries == 9 && counterButton == 0 && counterPage == 0){
+                            if (counterEntries == 10 && counterButton == 0 && counterPage == 0){
                                 btnRight.setEnabled(true);
                             }
 
                             if (
-                                (counterEntries == 9 && counterButton == 0) ||
-                                (counterEntries == 99 && counterButton == 1) ||
-                                (counterEntries == 999 && counterButton == 2)
+                                (counterEntries == 10 && counterButton == 0) ||
+                                (counterEntries == 100 && counterButton == 1) ||
+                                (counterEntries == 1000 && counterButton == 2)
                             ) {
+
+                                CalculationMathVariable();
                                 counterButton = (counterButton == 2) ? 0 : ++counterButton;
                                 counterEntries = 0;
                                 sensorManager.unregisterListener(sensorEventReal);
                                 btn.setEnabled(true);
                                 Toast.makeText(getApplicationContext(), "Расчет завершен.", Toast.LENGTH_SHORT).show();
+                                draftGraphic();
+                                draftMathVariable();
                             }
 
                         }
@@ -268,16 +235,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     btn.setEnabled(true);
                 }
 
-                LineDataSet dataSet = new LineDataSet(entries.get(counterPage), "Science");
-                dataSet.setColor(Color.RED);
-
-                LineData lineData = new LineData(dataSet);
-
-                lineChart.setData(lineData);
-
-                lineChart.invalidate();
             }
-
+            draftGraphic();
+            draftMathVariable();
         }
         else if (v.getId() == R.id.right){
 
@@ -293,15 +253,108 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     btn.setEnabled(true);
                 }
 
-                LineDataSet dataSet = new LineDataSet(entries.get(counterPage), "Science");
-                dataSet.setColor(Color.RED);
-
-                LineData lineData = new LineData(dataSet);
-
-                lineChart.setData(lineData);
-
-                lineChart.invalidate();
             }
+            draftGraphic();
+            draftMathVariable();
         }
+    }
+    private void CalculationGraphics(float x, float y, float z, int[] numbersEntryList, int step) {
+
+        if (counterEntries == step) {
+            counterEntries = 0;
+            return;
+        }
+
+        if (counterEntries == 0){
+            entries.set(numbersEntryList[0], new ArrayList<>());
+            entries.set(numbersEntryList[1], new ArrayList<>());
+            entries.set(numbersEntryList[2], new ArrayList<>());
+        }
+
+        if (counterEntries >= 0 && counterEntries <= step) {
+            entries.get(numbersEntryList[0]).add(new Entry(counterEntries, x));
+            entries.get(numbersEntryList[1]).add(new Entry(counterEntries, y));
+            entries.get(numbersEntryList[2]).add(new Entry(counterEntries, z));
+        }
+
+        counterEntries++;
+
+        try {
+            TimeUnit.MICROSECONDS.sleep(5000 / step);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+    }
+    private void CalculationMathVariable(){
+        for (int i : numberGraphicLines[counterButton]){
+            float mathExpectationTemp = 0;
+
+            for (Entry item : entries.get(i)) {
+                mathExpectationTemp += item.getY();
+            }
+            mathExpectationTemp /= entries.get(i).size();
+            mathExpectationTemp = (float) Math.round(mathExpectationTemp * 100) / 100;
+
+            mathExpectation.set(i, mathExpectationTemp);
+
+            float standardDeviationTemp = 0;
+            for (Entry item : entries.get(i)) {
+                float arg = item.getY();
+                arg -= mathExpectation.get(i);
+                arg = (float) Math.pow(arg, 2);
+                standardDeviationTemp += arg;
+            }
+            standardDeviationTemp /= entries.get(i).size();
+            standardDeviationTemp = (float) Math.sqrt(standardDeviationTemp);
+            standardDeviationTemp = (float) Math.round(standardDeviationTemp * 100) / 100;
+
+            standardDeviation.set(i, standardDeviationTemp);
+        }
+    }
+    private void draftGraphic(){
+        int currentNumberGraphic = counterPage / 3;
+        int currentColorGraphic = counterPage % 3;
+
+        lineChart = findViewById(R.id.chart);
+
+        Description description = new Description();
+        description.setText("");
+        lineChart.setDescription(description);
+
+
+        XAxis xAxis = lineChart.getXAxis();
+        xAxis.setPosition(XAxis.XAxisPosition.BOTTOM);
+        xAxis.setAxisMinimum(0f);
+        xAxis.setAxisMaximum(counterN[currentNumberGraphic]);
+        xAxis.setLabelCount(10);
+        xAxis.setAxisLineColor(Color.BLACK);
+
+        YAxis yAxis = lineChart.getAxisLeft();
+        yAxis.setPosition(YAxis.YAxisLabelPosition.OUTSIDE_CHART);
+        yAxis.setAxisMinimum(-12f);
+        yAxis.setAxisMaximum(12f);
+        yAxis.setLabelCount(25);
+        yAxis.setAxisLineColor(Color.BLACK);
+
+        YAxis yAxisRight = lineChart.getAxisRight();
+        yAxisRight.setEnabled(false);
+
+        LineDataSet dataSet = new LineDataSet(entries.get(counterPage), graphicNames[counterPage]);
+        dataSet.setColor(graphicColors[currentColorGraphic]);
+        dataSet.setDrawCircles(false);
+        dataSet.setDrawValues(false);
+
+
+        LineData lineData = new LineData(dataSet);
+        lineChart.setData(lineData);
+        lineChart.invalidate();
+    }
+    private void draftMathVariable() {
+        TextView textMathExpectation = (TextView)findViewById(R.id.textMathExpectation);
+        TextView textStandardDeviation = (TextView)findViewById(R.id.textStandardDeviation);
+        String strMathExpectation = "μ: " + mathExpectation.get(counterPage);
+        textMathExpectation.setText(strMathExpectation);
+        String strStandardDeviation = "σ: " + standardDeviation.get(counterPage);
+        textStandardDeviation.setText(strStandardDeviation);
     }
 }
