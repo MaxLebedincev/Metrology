@@ -23,16 +23,21 @@ import com.github.mikephil.charting.data.LineDataSet;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
 
     //region const
-    private static final String[] graphicNames = new String[] {
+    private static final int[] STEPS = new int[] {10, 100, 1000};
+    private static final int[] NUMBER_GRAPHICS = new int[] {0, 1, 2};
+    private static final int[][] NUMBER_GRAPHIC_LINES = new int[][] {
+        new int[] {0, 1, 2},
+        new int[] {3, 4, 5},
+        new int[] {6, 7, 8}
+    };
+    private static final String[] GRAPHIC_NAMES = new String[] {
             "Ускорение по оси X, при N = 10",
             "Ускорение по оси Y, при N = 10",
             "Ускорение по оси Z, при N = 10",
@@ -42,28 +47,30 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             "Ускорение по оси X, при N = 1000",
             "Ускорение по оси Y, при N = 1000",
             "Ускорение по оси Z, при N = 1000",
-
     };
-    private static final float[] counterN = new float[] {10f, 100f, 1000f};
-    private static final int[] graphicColors = new int[] {Color.RED, Color.BLUE, Color.GREEN};
-
-    private static final int[][] numberGraphicLines = new int[][] {
-        new int[] {0, 1, 2},
-        new int[] {3, 4, 5},
-        new int[] {6, 7, 8}
-    };
+    private static final int[] GRAPHIC_COLORS = new int[] {Color.RED, Color.BLUE, Color.GREEN};
+    final int X_AXIS_LABEL_COUNT = 25;
+    final int Y_AXIS_LABEL_COUNT = 25;
+    final float MIN_ACCELEROMETER_VALUE = -12f;
+    final float MAX_ACCELEROMETER_VALUE = 12f;
+    final float MIN_PROBABILITY = 0f;
+    final float MAX_PROBABILITY = 1f;
     //endregion
-    //region static value
+
+    //region sensors
+    private SensorManager sensorManager;
+    private Sensor accleroSensor;
+    private SensorEventListener sensorEventView;
+    private SensorEventListener sensorEventReal;
+    //endregion
+
+    //region Static value
     private static int counterEntries = 0;
     private static int counterButton = 0;
     private static int counterPage = 0;
     //endregion
 
-    private SensorManager sensorManager;
-    private Sensor accleroSensor;
-    private SensorEventListener sensorEventView;
-    private SensorEventListener sensorEventReal;
-    private LineChart lineChart;
+    //region List value
     private List<List<Float>> accelerometerVal = new ArrayList<List<Float>>() {{
         add(new ArrayList<>());
         add(new ArrayList<>());
@@ -86,7 +93,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         add(new ArrayList<>());
         add(new ArrayList<>());
     }};
-
     private List<Float> mathExpectation = new ArrayList<Float>() {{
         add(0f);
         add(0f);
@@ -98,7 +104,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         add(0f);
         add(0f);
     }};
-
     private List<Float> standardDeviation = new ArrayList<Float>() {{
         add(0f);
         add(0f);
@@ -110,14 +115,17 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         add(0f);
         add(0f);
     }};
+    //endregion
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
         Button btn1 = findViewById(R.id.calcul);
         Button btn2 = findViewById(R.id.left);
         Button btn3 = findViewById(R.id.right);
+
         btn1.setOnClickListener(this);
         btn2.setOnClickListener(this);
         btn3.setOnClickListener(this);
@@ -126,9 +134,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         btn3.setEnabled(false);
 
         sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
+
         if (sensorManager != null){
             accleroSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
-
             sensorEventView = new SensorEventListener(){
                 @Override
                 public void onSensorChanged(SensorEvent event) {
@@ -147,25 +155,21 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                         acceloText.setText(result);
                     }
                 }
-
                 @Override
-                public void onAccuracyChanged(Sensor sensor, int accuracy) {
-
-                }
+                public void onAccuracyChanged(Sensor sensor, int accuracy) {}
             };
-        } else {
-            Toast.makeText(this, "Sensor service not detected.", Toast.LENGTH_SHORT).show();
+        }
+        else {
+            Toast.makeText(this, "Сервис сенсоров не обнаружен.", Toast.LENGTH_SHORT).show();
         }
 
         draftGraphic();
     }
-
     @Override
     protected void onResume() {
         super.onResume();
         sensorManager.registerListener(sensorEventView, accleroSensor, SensorManager.SENSOR_DELAY_NORMAL);
     }
-
     @Override
     protected void onPause() {
         super.onPause();
@@ -193,24 +197,16 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                                 btn.setEnabled(false);
                             }
 
-                            if (counterButton == 0) {
-                                CalculationGraphics(x, y, z, numberGraphicLines[counterButton], 10);
-                            }
-                            else if (counterButton == 1) {
-                                CalculationGraphics(x, y, z, numberGraphicLines[counterButton], 100);
-                            }
-                            else if (counterButton == 2) {
-                                CalculationGraphics(x, y, z, numberGraphicLines[counterButton], 1000);
-                            }
+                            CalculationGraphics(x, y, z, NUMBER_GRAPHIC_LINES[counterButton], STEPS[counterButton]);
 
                             if (counterEntries == 10 && counterButton == 0 && counterPage == 0){
                                 btnRight.setEnabled(true);
                             }
 
                             if (
-                                (counterEntries == 10 && counterButton == 0) ||
-                                (counterEntries == 100 && counterButton == 1) ||
-                                (counterEntries == 1000 && counterButton == 2)
+                                (counterButton == 0 || counterButton == 1 || counterButton == 2)
+                                &&
+                                (counterEntries == STEPS[counterButton])
                             ) {
                                 CalculationMathVariable();
 
@@ -227,9 +223,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                         }
                     }
                     @Override
-                    public void onAccuracyChanged(Sensor sensor, int accuracy) {
-
-                    }
+                    public void onAccuracyChanged(Sensor sensor, int accuracy) {}
                 };
                 sensorManager.registerListener(sensorEventReal, accleroSensor, SensorManager.SENSOR_DELAY_NORMAL);
             } else {
@@ -237,9 +231,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             }
         }
         else if (v.getId() == R.id.left){
+
             if (counterPage != 0) {
                 counterPage--;
-
                 if (counterPage == 0){
                     Button btn = (Button) findViewById(R.id.left);
                     btn.setEnabled(false);
@@ -257,7 +251,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
             if (counterPage != 8) {
                 counterPage++;
-
                 if (counterPage == 8){
                     Button btn = (Button) findViewById(R.id.right);
                     btn.setEnabled(false);
@@ -272,6 +265,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             draftMathVariable();
         }
     }
+
+    //region math func
     private void CalculationGraphics(float x, float y, float z, int[] numbersEntryList, int step) {
 
         if (counterEntries == step) {
@@ -279,14 +274,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             return;
         }
 
-        if (counterEntries == 0){
-            accelerometerVal.set(numbersEntryList[0], new ArrayList<>());
-            accelerometerVal.set(numbersEntryList[1], new ArrayList<>());
-            accelerometerVal.set(numbersEntryList[2], new ArrayList<>());
-
-            entries.set(numbersEntryList[0], new ArrayList<>());
-            entries.set(numbersEntryList[1], new ArrayList<>());
-            entries.set(numbersEntryList[2], new ArrayList<>());
+        if (counterEntries == 0) {
+            for (int i : NUMBER_GRAPHICS)
+            {
+                accelerometerVal.set(numbersEntryList[i], new ArrayList<>());
+                entries.set(numbersEntryList[i], new ArrayList<>());
+            }
         }
 
         if (counterEntries >= 0 && counterEntries <= step) {
@@ -304,7 +297,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }
     }
     private void CalculationMathVariable(){
-        for (int i : numberGraphicLines[counterButton]){
+        for (int i : NUMBER_GRAPHIC_LINES[counterButton]){
             // mathExpectation
             float mathExpectationTemp = 0;
 
@@ -332,9 +325,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
             standardDeviation.set(i, standardDeviationTemp);
 
+            // filling in the values
             float newItem = -99999f;
             float counterKey = 0f;
-            entries.get(i).add(new Entry(-12f, 0f));
+            entries.get(i).add(new Entry(MIN_ACCELEROMETER_VALUE, MIN_PROBABILITY));
             for (float item : accelerometerVal.get(i)) {
                 if (newItem != item)
                 {
@@ -348,41 +342,42 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     counterKey++;
                 }
             }
-            entries.get(i).add(new Entry(12f, 0f));
+            entries.get(i).add(new Entry(MAX_ACCELEROMETER_VALUE, MIN_PROBABILITY));
         }
     }
-    private void draftGraphic(){
-        int currentColorGraphic = counterPage % 3;
+    //endregion
 
-        lineChart = findViewById(R.id.chart);
+    //region graphics func
+    private void draftGraphic(){
+        int currentColorGraphic = counterPage % NUMBER_GRAPHICS.length;
+
+        LineChart lineChart = findViewById(R.id.chart);
 
         Description description = new Description();
         description.setText("");
         lineChart.setDescription(description);
 
-
         XAxis xAxis = lineChart.getXAxis();
         xAxis.setPosition(XAxis.XAxisPosition.BOTTOM);
-        xAxis.setAxisMinimum(-12f);
-        xAxis.setAxisMaximum(12f);
-        xAxis.setLabelCount(25);
+        xAxis.setAxisMinimum(MIN_ACCELEROMETER_VALUE);
+        xAxis.setAxisMaximum(MAX_ACCELEROMETER_VALUE);
+        xAxis.setLabelCount(X_AXIS_LABEL_COUNT);
         xAxis.setAxisLineColor(Color.BLACK);
 
         YAxis yAxis = lineChart.getAxisLeft();
         yAxis.setPosition(YAxis.YAxisLabelPosition.OUTSIDE_CHART);
-        yAxis.setAxisMinimum(0f);
-        yAxis.setAxisMaximum(1f);
-        yAxis.setLabelCount(10);
+        yAxis.setAxisMinimum(MIN_PROBABILITY);
+        yAxis.setAxisMaximum(MAX_PROBABILITY);
+        yAxis.setLabelCount(Y_AXIS_LABEL_COUNT);
         yAxis.setAxisLineColor(Color.BLACK);
 
         YAxis yAxisRight = lineChart.getAxisRight();
         yAxisRight.setEnabled(false);
 
-        LineDataSet dataSet = new LineDataSet(entries.get(counterPage), graphicNames[counterPage]);
-        dataSet.setColor(graphicColors[currentColorGraphic]);
+        LineDataSet dataSet = new LineDataSet(entries.get(counterPage), GRAPHIC_NAMES[counterPage]);
+        dataSet.setColor(GRAPHIC_COLORS[currentColorGraphic]);
         dataSet.setDrawCircles(false);
         dataSet.setDrawValues(false);
-
 
         LineData lineData = new LineData(dataSet);
         lineChart.setData(lineData);
@@ -396,4 +391,5 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         String strStandardDeviation = "σ: " + standardDeviation.get(counterPage);
         textStandardDeviation.setText(strStandardDeviation);
     }
+    //endregion
 }
