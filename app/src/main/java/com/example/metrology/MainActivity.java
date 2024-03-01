@@ -195,25 +195,29 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                             if (counterEntries == 0) {
                                 Toast.makeText(getApplicationContext(), "Расчет начат.", Toast.LENGTH_SHORT).show();
                                 btn.setEnabled(false);
+                                for (int i : NUMBER_GRAPHICS)
+                                {
+                                    accelerometerVal.set(NUMBER_GRAPHIC_LINES[counterButton][i], new ArrayList<>());
+                                    entries.set(NUMBER_GRAPHIC_LINES[counterButton][i], new ArrayList<>());
+                                }
                             }
 
                             CalculationGraphics(x, y, z, NUMBER_GRAPHIC_LINES[counterButton], STEPS[counterButton]);
-
-                            if (counterEntries == 10 && counterButton == 0 && counterPage == 0){
-                                btnRight.setEnabled(true);
-                            }
 
                             if (
                                 (counterButton == 0 || counterButton == 1 || counterButton == 2)
                                 &&
                                 (counterEntries == STEPS[counterButton])
                             ) {
+                                btnRight.setEnabled(true);
+                                btn.setEnabled(true);
+                                sensorManager.unregisterListener(sensorEventReal);
+
                                 CalculationMathVariable();
 
                                 counterButton = (counterButton == 2) ? 0 : ++counterButton;
                                 counterEntries = 0;
-                                sensorManager.unregisterListener(sensorEventReal);
-                                btn.setEnabled(true);
+
                                 Toast.makeText(getApplicationContext(), "Расчет завершен.", Toast.LENGTH_SHORT).show();
 
                                 draftGraphic();
@@ -269,29 +273,14 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     //region math func
     private void CalculationGraphics(float x, float y, float z, int[] numbersEntryList, int step) {
 
-        if (counterEntries == step) {
-            counterEntries = 0;
-            return;
-        }
-
-        if (counterEntries == 0) {
-            for (int i : NUMBER_GRAPHICS)
-            {
-                accelerometerVal.set(numbersEntryList[i], new ArrayList<>());
-                entries.set(numbersEntryList[i], new ArrayList<>());
-            }
-        }
-
-        if (counterEntries >= 0 && counterEntries <= step) {
-            accelerometerVal.get(numbersEntryList[0]).add(x);
-            accelerometerVal.get(numbersEntryList[1]).add(y);
-            accelerometerVal.get(numbersEntryList[2]).add(z);
-        }
+        accelerometerVal.get(numbersEntryList[0]).add(x);
+        accelerometerVal.get(numbersEntryList[1]).add(y);
+        accelerometerVal.get(numbersEntryList[2]).add(z);
 
         counterEntries++;
 
         try {
-            TimeUnit.MICROSECONDS.sleep(5000 / step);
+            TimeUnit.MILLISECONDS.sleep(3000 / step);
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
@@ -300,8 +289,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         for (int i : NUMBER_GRAPHIC_LINES[counterButton]){
             // mathExpectation
             float mathExpectationTemp = 0;
-
-            Collections.sort(accelerometerVal.get(i));
 
             for (Float item : accelerometerVal.get(i)) {
                 mathExpectationTemp += item;
@@ -325,15 +312,21 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
             standardDeviation.set(i, standardDeviationTemp);
 
+            for (float g = MIN_ACCELEROMETER_VALUE; g < 26f; g++)
+            {
+                accelerometerVal.get(i).add(g);
+            }
+
+            Collections.sort(accelerometerVal.get(i));
+
             // filling in the values
             float newItem = -99999f;
             float counterKey = 0f;
-            entries.get(i).add(new Entry(MIN_ACCELEROMETER_VALUE, MIN_PROBABILITY));
             for (float item : accelerometerVal.get(i)) {
                 if (newItem != item)
                 {
                     if (counterKey != 0f) {
-                        float y = (float) Math.round((counterKey/accelerometerVal.get(i).size()) * 100) / 100;
+                        float y = (float) Math.round((counterKey/(accelerometerVal.get(i).size() - 25f)) * 100) / 100;
                         entries.get(i).add(new Entry(newItem, y));
                     }
                     newItem = item;
@@ -342,7 +335,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     counterKey++;
                 }
             }
-            entries.get(i).add(new Entry(MAX_ACCELEROMETER_VALUE, MIN_PROBABILITY));
         }
     }
     //endregion
